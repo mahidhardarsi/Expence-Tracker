@@ -1,0 +1,39 @@
+# Android/Gradle build outputs
+.gradle/
+build/
+*/build/
+.kotlin/
+
+# Local SDK and machine-specific config
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Keystores and signing artifacts
+*.jks
+*.keystore
+*.p12
+
+# Generated crash and profiling outputs
+*.hprof
+
+# Packaged Android artifacts
+*.apk
+*.aab
+
+# Optional local env/secret files
+.env
+.env.*
+!.env.example

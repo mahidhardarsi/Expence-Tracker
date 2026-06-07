@@ -64,7 +64,7 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     implementation(libs.androidx.hilt.work)
     implementation(libs.google.ai.edge.litertlm.android)
-    implementation(libs.tensorflow-lite-gpu)
+    implementation(libs.tensorflow.lite.gpu)
 
     ksp(libs.hilt.compiler)
     ksp(libs.androidx.hilt.compiler)

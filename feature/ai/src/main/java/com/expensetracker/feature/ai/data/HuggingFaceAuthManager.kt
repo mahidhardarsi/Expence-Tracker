@@ -1,6 +1,7 @@
 package com.expensetracker.feature.ai.data
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.net.Uri
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
@@ -44,17 +45,20 @@ class HuggingFaceAuthManager @Inject constructor(
     private val okHttpClient: OkHttpClient,
     private val gson: Gson
 ) {
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
-
-    private val prefs = EncryptedSharedPreferences.create(
-        context,
-        "ai_auth_secure_prefs",
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val prefs: SharedPreferences = runCatching {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            context,
+            "ai_auth_secure_prefs",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }.getOrElse {
+        context.getSharedPreferences("ai_auth_prefs_fallback", Context.MODE_PRIVATE)
+    }
 
     private val _authState = MutableStateFlow(loadState())
     val authState: StateFlow<AuthState> = _authState.asStateFlow()

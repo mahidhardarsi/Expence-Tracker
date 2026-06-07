@@ -10,11 +10,13 @@ import com.expensetracker.feature.ai.data.ModelDownloadManager
 import com.expensetracker.feature.ai.data.ModelRegistry
 import com.expensetracker.feature.ai.data.ModelStorageManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class ModelHubUiState(
@@ -59,26 +61,38 @@ class ModelHubViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ModelHubUiState())
 
     fun startDownload(modelId: String) = viewModelScope.launch {
-        preferencesStore.setModelState(modelId, ModelState.Queued)
-        downloadManager.enqueue(modelId)
+        runCatching {
+            preferencesStore.setModelState(modelId, ModelState.Queued)
+            downloadManager.enqueue(modelId)
+        }.onFailure { e ->
+            preferencesStore.setModelState(modelId, ModelState.Error(e.message ?: "Failed to start download"))
+        }
     }
 
     fun cancelDownload(modelId: String) = viewModelScope.launch {
-        downloadManager.cancel(modelId)
-        preferencesStore.setModelState(modelId, ModelState.NotDownloaded)
+        runCatching {
+            downloadManager.cancel(modelId)
+            preferencesStore.setModelState(modelId, ModelState.NotDownloaded)
+        }
     }
 
     fun useModel(modelId: String) = viewModelScope.launch {
-        preferencesStore.setActiveModelId(modelId)
-        inferenceEngine.loadModel(modelId)
+        runCatching {
+            preferencesStore.setActiveModelId(modelId)
+            inferenceEngine.loadModel(modelId)
+        }
     }
 
     fun deleteModel(modelId: String) = viewModelScope.launch {
-        if (uiState.value.activeModelId == modelId) {
-            inferenceEngine.unloadModel()
-            preferencesStore.setActiveModelId(null)
+        runCatching {
+            if (uiState.value.activeModelId == modelId) {
+                inferenceEngine.unloadModel()
+                preferencesStore.setActiveModelId(null)
+            }
+            withContext(Dispatchers.IO) {
+                storageManager.deleteModel(modelId)
+            }
+            preferencesStore.clearModelState(modelId)
         }
-        storageManager.deleteModel(modelId)
-        preferencesStore.clearModelState(modelId)
     }
 }

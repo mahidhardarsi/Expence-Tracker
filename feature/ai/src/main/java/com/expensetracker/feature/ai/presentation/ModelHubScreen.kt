@@ -92,11 +92,7 @@ fun ModelHubScreen(
                                     onClick = {},
                                     label = { Text(accelerator, style = MaterialTheme.typography.labelSmall) },
                                     leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Memory,
-                                            contentDescription = null,
-                                            modifier = Modifier.padding(0.dp)
-                                        )
+                                        Icon(Icons.Default.Memory, contentDescription = null)
                                     },
                                     colors = AssistChipDefaults.assistChipColors(
                                         containerColor = if (isGpu)

@@ -14,6 +14,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -76,7 +80,41 @@ fun ModelHubScreen(
                         Text(card.model.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(card.model.description, style = MaterialTheme.typography.bodyMedium)
                         Text("~${card.model.sizeBytes / 1_000_000_000.0} GB • ${if (card.model.supportsVision) "Text + Image" else "Text only"}")
-                        Text(renderState(card.state), style = MaterialTheme.typography.bodySmall)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(renderState(card.state), style = MaterialTheme.typography.bodySmall)
+                            if (card.isActive && card.state is ModelState.Ready) {
+                                val accelerator = card.state.accelerator
+                                val isGpu = accelerator == "GPU"
+                                AssistChip(
+                                    onClick = {},
+                                    label = { Text(accelerator, style = MaterialTheme.typography.labelSmall) },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Memory,
+                                            contentDescription = null,
+                                            modifier = Modifier.padding(0.dp)
+                                        )
+                                    },
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = if (isGpu)
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.secondaryContainer,
+                                        labelColor = if (isGpu)
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.onSecondaryContainer,
+                                        leadingIconContentColor = if (isGpu)
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                )
+                            }
+                        }
                         if (card.state is ModelState.Downloading) {
                             LinearProgressIndicator(
                                 progress = { card.state.progress / 100f },
@@ -120,6 +158,6 @@ private fun renderState(state: ModelState): String = when (state) {
     is ModelState.Downloading -> "Downloading ${state.progress}%"
     ModelState.Downloaded -> "Downloaded"
     ModelState.Loading -> "Loading"
-    is ModelState.Ready -> "Ready"
+    is ModelState.Ready -> "Ready • ${state.accelerator}"
     is ModelState.Error -> state.message
 }

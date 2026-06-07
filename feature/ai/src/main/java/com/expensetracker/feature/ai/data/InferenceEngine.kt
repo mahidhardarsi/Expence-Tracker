@@ -49,15 +49,26 @@ class InferenceEngine @Inject constructor(
         unloadModel()
 
         try {
-            val config = EngineConfig(
-                modelPath = storageManager.modelFile(modelId).absolutePath,
-                backend = Backend.CPU()
-            )
-            val createdEngine = Engine(config)
-            createdEngine.initialize()
+            val modelPath = storageManager.modelFile(modelId).absolutePath
+            val visionBackend = if (model.supportsVision) Backend.GPU() else null
+            val (createdEngine, usedBackend) = try {
+                val gpuConfig = EngineConfig(
+                    modelPath = modelPath,
+                    backend = Backend.GPU(),
+                    visionBackend = visionBackend
+                )
+                Engine(gpuConfig).also { it.initialize() } to "GPU"
+            } catch (_: Exception) {
+                val cpuConfig = EngineConfig(
+                    modelPath = modelPath,
+                    backend = Backend.CPU(),
+                    visionBackend = visionBackend
+                )
+                Engine(cpuConfig).also { it.initialize() } to "CPU"
+            }
             engine = createdEngine
             loadedModelId = modelId
-            val readyState = ModelState.Ready(modelId, model.supportsVision)
+            val readyState = ModelState.Ready(modelId, model.supportsVision, accelerator = usedBackend)
             _state.value = readyState
             preferencesStore.setModelState(modelId, readyState)
         } catch (e: Exception) {

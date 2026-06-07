@@ -1,5 +1,6 @@
 package com.expensetracker.presentation
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -19,9 +20,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.expensetracker.domain.model.*
 import com.expensetracker.feature.ai.data.AiPreferencesStore
+import com.expensetracker.feature.ai.data.HuggingFaceAuthManager
 import com.expensetracker.feature.ai.data.InferenceEngine
+import kotlinx.coroutines.launch
 import com.expensetracker.feature.ai.presentation.AiChatScreen
 import com.expensetracker.feature.ai.presentation.InvoiceScannerSheet
 import com.expensetracker.feature.ai.presentation.ModelHubScreen
@@ -43,6 +47,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var aiPreferencesStore: AiPreferencesStore
     @Inject lateinit var inferenceEngine: InferenceEngine
+    @Inject lateinit var huggingFaceAuthManager: HuggingFaceAuthManager
 
     private val unloadHandler = Handler(Looper.getMainLooper())
     private val unloadRunnable = Runnable { inferenceEngine.unloadModel() }
@@ -79,6 +84,16 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         unloadHandler.postDelayed(unloadRunnable, 30_000L)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val uri = intent.data ?: return
+        if (uri.scheme == "expensetracker" && uri.host == "auth") {
+            lifecycleScope.launch {
+                huggingFaceAuthManager.handleRedirect(uri)
+            }
+        }
     }
 
     override fun onTrimMemory(level: Int) {

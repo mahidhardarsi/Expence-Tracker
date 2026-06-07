@@ -74,7 +74,7 @@ class AiPreferencesStore @Inject constructor(
         is ModelState.Downloading -> "downloading:${state.progress}"
         ModelState.Downloaded -> "downloaded"
         ModelState.Loading -> "loading"
-        is ModelState.Ready -> "ready:${state.modelId}:${state.supportsVision}"
+        is ModelState.Ready -> "ready:${state.modelId}:${state.supportsVision}:${state.accelerator}"
         is ModelState.Error -> "error:${state.message}"
     }
 
@@ -93,7 +93,8 @@ class AiPreferencesStore @Inject constructor(
                 val pieces = raw.split(":")
                 ModelState.Ready(
                     modelId = pieces.getOrNull(1).orEmpty(),
-                    supportsVision = pieces.getOrNull(2)?.toBoolean() ?: false
+                    supportsVision = pieces.getOrNull(2)?.toBoolean() ?: false,
+                    accelerator = pieces.getOrNull(3) ?: "CPU"
                 )
             }
             raw.startsWith("error:") -> ModelState.Error(raw.substringAfter("error:"))

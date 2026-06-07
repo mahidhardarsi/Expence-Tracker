@@ -3,13 +3,13 @@ package com.expensetracker.feature.ai.presentation
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +27,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -37,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.expensetracker.domain.model.Category
 import com.expensetracker.domain.model.InvoiceFields
+import java.io.File
 import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,14 +55,18 @@ fun InvoiceScannerSheet(
     val context = LocalContext.current
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
 
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        bitmap?.let {
-            persistBitmap(context, it)?.let(viewModel::setPreviewImage)
+    val pendingPhotoUri = rememberSaveable { mutableStateOf<String?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) {
+            pendingPhotoUri.value?.let(viewModel::setPreviewImage)
         }
     }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
-            cameraLauncher.launch(null)
+            val file = File(context.cacheDir, "invoice-${System.currentTimeMillis()}.jpg")
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            pendingPhotoUri.value = file.absolutePath
+            cameraLauncher.launch(uri)
         } else {
             Toast.makeText(context, "Camera permission is required to take a photo.", Toast.LENGTH_SHORT).show()
         }
@@ -87,7 +94,10 @@ fun InvoiceScannerSheet(
                     onClick = {
                         when {
                             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED -> {
-                                cameraLauncher.launch(null)
+                                val file = File(context.cacheDir, "invoice-${System.currentTimeMillis()}.jpg")
+                                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                                pendingPhotoUri.value = file.absolutePath
+                                cameraLauncher.launch(uri)
                             }
                             else -> permissionLauncher.launch(Manifest.permission.CAMERA)
                         }
@@ -115,7 +125,7 @@ fun InvoiceScannerSheet(
                     if (visionAvailable) {
                         Button(onClick = { viewModel.extract(categories) }) { Text("Extract") }
                     } else {
-                        Text("The active model is text-only. Switch to Gemma 3n E2B to scan invoices.", color = MaterialTheme.colorScheme.error)
+                        Text("The active model is text-only. Switch to Gemma 4 E2B to scan invoices.", color = MaterialTheme.colorScheme.error)
                         OutlinedButton(onClick = onOpenModelHub) { Text("Open Model Hub") }
                     }
                 }
@@ -140,16 +150,12 @@ fun InvoiceScannerSheet(
     }
 }
 
-private fun persistBitmap(context: Context, bitmap: Bitmap): String? = runCatching {
-    val file = java.io.File(context.cacheDir, "invoice-${System.currentTimeMillis()}.jpg")
+private fun persistUriImage(context: Context, uri: Uri): String? = runCatching {
+    val file = File(context.cacheDir, "invoice-${System.currentTimeMillis()}.jpg")
+    val input = context.contentResolver.openInputStream(uri) ?: return null
+    val bitmap = BitmapFactory.decodeStream(input) ?: return null
     FileOutputStream(file).use { stream ->
         bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
     }
     file.absolutePath
-}.getOrNull()
-
-private fun persistUriImage(context: Context, uri: Uri): String? = runCatching {
-    val input = context.contentResolver.openInputStream(uri) ?: return null
-    val bitmap = BitmapFactory.decodeStream(input) ?: return null
-    persistBitmap(context, bitmap)
 }.getOrNull()

@@ -13,6 +13,10 @@ android {
     defaultConfig {
         minSdk = 29
         consumerProguardFiles("consumer-rules.pro")
+        buildConfigField("String", "HF_CLIENT_ID",
+            "\"${project.findProperty("HF_CLIENT_ID") ?: ""}\"")
+        buildConfigField("String", "HF_REDIRECT_URI",
+            "\"${project.findProperty("HF_REDIRECT_URI") ?: "expensetracker://auth/huggingface"}\"")
     }
 
     compileOptions {

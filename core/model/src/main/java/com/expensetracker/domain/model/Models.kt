@@ -130,7 +130,7 @@ sealed interface ModelState {
     data class Downloading(val progress: Int, val downloadedBytes: Long, val totalBytes: Long) : ModelState
     data object Downloaded : ModelState
     data object Loading : ModelState
-    data class Ready(val modelId: String, val supportsVision: Boolean) : ModelState
+    data class Ready(val modelId: String, val supportsVision: Boolean, val accelerator: String = "CPU") : ModelState
     data class Error(val message: String) : ModelState
 }
 

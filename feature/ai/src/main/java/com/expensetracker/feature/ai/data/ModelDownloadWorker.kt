@@ -19,7 +19,8 @@ class ModelDownloadWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val storageManager: ModelStorageManager,
-    private val preferencesStore: AiPreferencesStore
+    private val preferencesStore: AiPreferencesStore,
+    private val authManager: HuggingFaceAuthManager
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -31,12 +32,12 @@ class ModelDownloadWorker @AssistedInject constructor(
         preferencesStore.setModelState(modelId, ModelState.Queued)
         setForeground(createForegroundInfo(model.displayName, 0))
 
+        val token = authManager.getValidAccessToken()
         val request = Request.Builder()
             .url(model.downloadUrl)
             .apply {
-                if (existingLength > 0) {
-                    header("Range", "bytes=$existingLength-")
-                }
+                token?.let { header("Authorization", "Bearer $it") }
+                if (existingLength > 0) header("Range", "bytes=$existingLength-")
             }
             .build()
 
